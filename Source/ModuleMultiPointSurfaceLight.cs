@@ -15,7 +15,7 @@ namespace KSP_Light_Mods {
 /// Light name is used to make GUI strings so, keep it short and human readable.
 /// E.g. "L1", "L2", etc.
 /// </remarks>
-public class MultiPointSurfaceLight : ModuleLight {
+public class ModuleMultiPointSurfaceLight : ModuleLight {
   /// <summary>Last known light state.</summary>
   bool lastOnState = false;
 
@@ -42,19 +42,7 @@ public class MultiPointSurfaceLight : ModuleLight {
   }
   AnimationState _animationState;
 
-  /// <summary>Animation to dim the light(s).</summary>
-  /// <remarks>For now it's global, for all the lights.</remarks>
-  Animation animation {
-    get {
-      if (!_animation) {
-        FindAnimation();
-      }
-      return _animation;
-    }
-  }
-  Animation _animation;
-
-  /// <summary>Scans for the animation in the model and records the found values.</summary>
+  /// <summary>Scans for the animation in the model and records the found value.</summary>
   /// <remarks>Scanning model for components is an expensive operation so, cache the found values
   /// assuming they won't change.
   /// <para>In case of some control needs to mangle with animations in runtime allow this method to
@@ -65,22 +53,22 @@ public class MultiPointSurfaceLight : ModuleLight {
     foreach (var modelAnimation in animations) {
       var modelAnimationState = modelAnimation[animationName];
       if (modelAnimationState != null) {
-        _animation = modelAnimation;
         _animationState = modelAnimationState;
         _animationState.normalizedSpeed = 0;  // Freeze.
+        modelAnimation.Play(animationName);
         break;
       }
-    }
-
-    // Animation is freezed so, it just applies the initial state.
-    if (_animation) {
-      animation.Play(animationName);
     }
   }
 
   public override void OnLoad(ConfigNode node) {
     base.OnLoad(node);
-    UpdateAnimationState();
+    if (animationState) {
+      UpdateAnimationState();
+    } else {
+      Debug.LogErrorFormat("Bad model or config in part {0}. Cannot find animation: {1}",
+                           part, animationName);
+    }
   }
   
   public override void OnStart(PartModule.StartState state) {
@@ -102,12 +90,9 @@ public class MultiPointSurfaceLight : ModuleLight {
           uiEvent.guiName = lightName + ": " + uiEvent.guiName;
         }
       }
-      foreach (var field in Fields) {
-        var bf = field as BaseField;
-        if ((bf.name == "lightR" || bf.name == "lightG" || bf.name == "lightB")
-            && !bf.guiName.StartsWith(lightName)) {
-          bf.guiName = lightName + ": " + bf.guiName;
-        }
+      var uiFields = new[] {Fields["lightR"], Fields["lightG"], Fields["lightB"]};
+      foreach (var field in uiFields) {
+        field.guiName = lightName + ": " + field.guiName;
       }
     }
   }
@@ -126,11 +111,13 @@ public class MultiPointSurfaceLight : ModuleLight {
   /// texture if none is enabled.</remarks>
 	void UpdateAnimationState() {
     lastOnState = isOn;
-    var allAreOff = true;
-    foreach (var module in allLightModules) {
-      allAreOff &= !module.isOn;
+    if (animationState) {
+      var allAreOff = true;
+      foreach (var module in allLightModules) {
+        allAreOff &= !module.isOn;
+      }
+      animationState.normalizedTime = allAreOff ? 0 : 1;
     }
-    animationState.normalizedTime = allAreOff ? 0 : 1;
   }
 }
 
