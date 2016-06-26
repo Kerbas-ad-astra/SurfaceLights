@@ -10,12 +10,12 @@ using UnityEngine;
 
 namespace KSP_Light_Mods {
 
-/// <summary>A light module that keeps macth between emitting light color and the glowing texture
+/// <summary>A light module that keeps match between emitting light color and the glowing texture
 /// color ("lens").</summary>
-/// <remarks>Light color changes won't be picked up automaticaly since it's too expensive to do the
-/// check on every update. Lens color is updated only once on the part load. If color changes in
-/// runtime then the code that does the change must explicitly call
-/// <see cref="UpdateLightTextureColor"/> to have lens updated.</remarks>
+/// <remarks>If light color is changed inflight it won't be picked up automaticaly since it's too
+/// expensive to do the check on every update. Lens color is updated only once on the part load.
+/// To have color updated inflight the code that does the change must call
+/// <see cref="UpdateLightTextureColor"/> on the module.</remarks>
 public class ModuleColoredLensLight : ModuleLight {
   Color currentLensColor;
   float lastLensBrightness;
@@ -31,15 +31,18 @@ public class ModuleColoredLensLight : ModuleLight {
   }
   Material _lightMaterial;
 
+  /// <summary>Defines minimum white color level.</summary>
   [KSPField(guiName = "Lens brightness", isPersistant = true)]
   [UI_FloatRange(stepIncrement = 0.05f, maxValue = 1f, minValue = 0f)]
   public float lensBrightness = 0.5f;
 
+  /// <inheritdoc/>
   public override void OnInitialize() {
     base.OnInitialize();
     UpdateLightTextureColor();
   }
 
+  /// <inheritdoc/>
   public void Update() {
     // It's to expensive to fetch and compare colors on every single frame. And normally is not
     // needed. Light color is expected to change in the editor but changes in flight can only happen
